@@ -36,7 +36,7 @@ STREAMING_DURATION="20s"
 ##############################################################################
 #       WARNING | do not modify code below this line | WARNING  
 ##############################################################################
-VERSION="2.0.0"
+VERSION="2.1.0"
 
 SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
@@ -48,9 +48,70 @@ APPS_PATH="/root/apps"
 APP_PATH="detection"
 APP_CMD="detection.sh"
 
-##
+# fan control
+PWM_CHIP=0
+PWM_CHANNEL=0
+PWM_FREQUENCY=100            # 100kHz
+
+## ###########################################################################
+## tools
+## ###########################################################################
+
+initialize_pwm() {
+    echo "Initializing PWM${PWM_CHIP}..."
+    
+    # Check if PWM chip exists
+    if [ ! -d "$PWM_BASE" ]; then
+        echo -e "${RED}ERROR: PWM chip $PWM_CHIP not found at $PWM_BASE ${RESET}"
+        exit 1
+    fi
+    
+    # Export PWM channel if not already exported
+    if [ ! -d "$PWM_PATH" ]; then
+        echo $PWM_CHANNEL > "${PWM_BASE}/export"
+        sleep 0.5
+    fi
+    
+    # Calculate period in nanoseconds
+    # Period = 1,000,000,000 / frequency
+    PWM_PERIOD=$((1000000000 / PWM_FREQUENCY))
+    
+    # Set period
+    echo $PWM_PERIOD > "${PWM_PATH}/period"
+    
+    # Set initial duty cycle to minimum
+    duty_ns=$(echo "scale=0; $PWM_PERIOD * $DUTY_CYCLE_MIN / 100" | bc)
+    echo $duty_ns > "${PWM_PATH}/duty_cycle"
+    
+    # Enable PWM
+    echo 1 > "${PWM_PATH}/enable"
+    
+    echo -e "${GREEN}PWM initialized: ${PWM_FREQUENCY}Hz, Period: ${PWM_PERIOD}ns ${RESET}"
+}
+
+set_duty_cycle() {
+    local duty_percent=$1
+    
+    # Clamp duty cycle between min and max
+    if (( $(echo "$duty_percent < $DUTY_CYCLE_MIN" | bc -l) )); then
+        duty_percent=$DUTY_CYCLE_MIN
+    elif (( $(echo "$duty_percent > $DUTY_CYCLE_MAX" | bc -l) )); then
+        duty_percent=$DUTY_CYCLE_MAX
+    fi
+    
+    # Calculate duty cycle in nanoseconds
+    duty_ns=$(echo "scale=0; $PWM_PERIOD * $duty_percent / 100" | bc)
+    
+    # Set duty cycle
+    echo $duty_ns > "${PWM_PATH}/duty_cycle"
+    
+    echo $duty_percent
+}
+
+## ###########################################################################
 ## MAIN
-##
+## ###########################################################################
+
 
 # Colors
 GRAY="\e[90m"
@@ -241,10 +302,19 @@ else
    exit
 fi
 
-## pwm && gpio testing
+## fan testing
+echo -e "Test FAN: turning ON for 6 seconds ..."
+rv=$(set_duty_cycle 100)
+sleep 1
+echo -e "${YELLOW} Please VERIFY that fan is: ON"
+sleep 5
+rv=$(set_duty_cycle 0)
+sleep 1
+echo -e "${YELLOW} Please VERIFY that fan is: OFF"
 
-PWM_CHIP=1
-PWM_CHANNEL=0
+## pwm && gpio testing
+GPIO_PWM_CHIP=1
+GPIO_PWM_CHANNEL=0
 GPIO_CHIP=gpiochip1
 GPIO_LINE=1
 
@@ -256,10 +326,10 @@ echo -e "Test PWM blink (fast) ..."
 sleep 1
 
 # Start PWM
-echo -e 0 > /sys/class/pwm/pwmchip${PWM_CHIP}/export
-echo -e 300000000 > /sys/class/pwm/pwmchip${PWM_CHIP}/pwm${PWM_CHANNEL}/period
-echo -e 100000000 > /sys/class/pwm/pwmchip${PWM_CHIP}/pwm${PWM_CHANNEL}/duty_cycle
-echo -e 1 > /sys/class/pwm/pwmchip${PWM_CHIP}/pwm${PWM_CHANNEL}/enable
+echo -e 0 > /sys/class/pwm/pwmchip${GPIO_PWM_CHIP}/export
+echo -e 300000000 > /sys/class/pwm/pwmchip${GPIO_PWM_CHIP}/pwm${GPIO_PWM_CHANNEL}/period
+echo -e 100000000 > /sys/class/pwm/pwmchip${GPIO_PWM_CHIP}/pwm${GPIO_PWM_CHANNEL}/duty_cycle
+echo -e 1 > /sys/class/pwm/pwmchip${GPIO_PWM_CHIP}/pwm${GPIO_PWM_CHANNEL}/enable
 
 echo -e "${GRAY}Polling GPIO for HIGH levels (timeout: ${TIMEOUT}s)...${RESET}"
 
@@ -302,8 +372,8 @@ echo -e "Final HIGH count: $count"
 echo -e "${GRAY}Stopping PWM...${RESET}"
 
 # Stop PWM
-echo -e 0 > /sys/class/pwm/pwmchip${PWM_CHIP}/pwm${PWM_CHANNEL}/enable
-echo -e 0 > /sys/class/pwm/pwmchip${PWM_CHIP}/unexport
+echo -e 0 > /sys/class/pwm/pwmchip${GPIO_PWM_CHIP}/pwm${GPIO_PWM_CHANNEL}/enable
+echo -e 0 > /sys/class/pwm/pwmchip${GPIO_PWM_CHIP}/unexport
 
 if [[ "$count" == "$TARGET_COUNT" ]]; then
    echo -e "${GREEN}[OK] GPIO test passed${RESET}"
