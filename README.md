@@ -1,6 +1,8 @@
 # qbastrial_hwtest
 QB-ASTRIAL camera testing procedure
 
+| <img src="./docs/qbastrial_dongle.jpg" alt="QBASTRIAL dongle" height="300"> | <img src="./docs/qbastrial_m8.jpg" alt="QBASTRIAL" height="300"> |
+
 ## requirements
 You will need a Ubuntu linux PC with at least one spare eth port, one PoE ethernet switch, the QB-ASTRIAL camera.
 You will need a USB-TO-SERIAL adapter for 3.3v level to connect to the camera via serial port.
