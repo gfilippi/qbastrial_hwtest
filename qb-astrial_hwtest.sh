@@ -48,10 +48,15 @@ APPS_PATH="/root/apps"
 APP_PATH="detection"
 APP_CMD="detection.sh"
 
-# fan control
+# pwm fan control
 PWM_CHIP=0
 PWM_CHANNEL=0
-PWM_FREQUENCY=100            # 100kHz
+PWM_FREQUENCY=100 # 100kHz
+PWM_BASE="/sys/class/pwm/pwmchip${PWM_CHIP}"
+PWM_PATH="${PWM_BASE}/pwm${PWM_CHANNEL}"
+PWM_DUTY_CYCLE_MIN=0
+PWM_DUTY_CYCLE_MAX=100
+
 
 ## ###########################################################################
 ## tools
@@ -80,7 +85,7 @@ initialize_pwm() {
     echo $PWM_PERIOD > "${PWM_PATH}/period"
     
     # Set initial duty cycle to minimum
-    duty_ns=$(echo "scale=0; $PWM_PERIOD * $DUTY_CYCLE_MIN / 100" | bc)
+    duty_ns=$(echo "scale=0; $PWM_PERIOD * $PWM_DUTY_CYCLE_MIN / 100" | bc)
     echo $duty_ns > "${PWM_PATH}/duty_cycle"
     
     # Enable PWM
@@ -93,10 +98,10 @@ set_duty_cycle() {
     local duty_percent=$1
     
     # Clamp duty cycle between min and max
-    if (( $(echo "$duty_percent < $DUTY_CYCLE_MIN" | bc -l) )); then
-        duty_percent=$DUTY_CYCLE_MIN
-    elif (( $(echo "$duty_percent > $DUTY_CYCLE_MAX" | bc -l) )); then
-        duty_percent=$DUTY_CYCLE_MAX
+    if (( $(echo "$duty_percent < $PWM_DUTY_CYCLE_MIN" | bc -l) )); then
+        duty_percent=$PWM_DUTY_CYCLE_MIN
+    elif (( $(echo "$duty_percent > $PWM_DUTY_CYCLE_MAX" | bc -l) )); then
+        duty_percent=$PWM_DUTY_CYCLE_MAX
     fi
     
     # Calculate duty cycle in nanoseconds
@@ -104,9 +109,7 @@ set_duty_cycle() {
     
     # Set duty cycle
     echo $duty_ns > "${PWM_PATH}/duty_cycle"
-    
-    echo $duty_percent
-}
+ }
 
 ## ###########################################################################
 ## MAIN
@@ -303,14 +306,16 @@ else
 fi
 
 ## fan testing
+initialize_pwm
 echo -e "Test FAN: turning ON for 6 seconds ..."
-rv=$(set_duty_cycle 100)
+set_duty_cycle 100
 sleep 1
-echo -e "${YELLOW} Please VERIFY that fan is: ON"
+echo -e "${YELLOW} >>> Please VERIFY that fan is: ON${RESET}"
 sleep 5
-rv=$(set_duty_cycle 0)
+set_duty_cycle 0
 sleep 1
-echo -e "${YELLOW} Please VERIFY that fan is: OFF"
+echo -e "${YELLOW} >>> Please VERIFY that fan is: OFF${RESET}"
+sleep 3
 
 ## pwm && gpio testing
 GPIO_PWM_CHIP=1
@@ -382,8 +387,6 @@ else
    echo -e "test procedure interrupted."
    exit
 fi
-
-
 
 
 ##
