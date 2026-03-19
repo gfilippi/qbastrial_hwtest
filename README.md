@@ -19,13 +19,13 @@ On your linux PC install Putty and connect via serial port to the camera, using 
 Open a command shell (bash) on your PC, enter the qbastrial_hwtest and launch the streaming client:
 
 ```
-./streaming
+./qb-astrial_streaming_client.sh
 ```
 
 Now open a separate command shell, enter the qbastrial_hwtest folder and launch the testing script.
 
 ```
-./test
+./runme.sh
 ```
 
 Follow instructions on the screen to proceede with all the testing steps until the procedure is successful.
