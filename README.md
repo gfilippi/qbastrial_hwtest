@@ -17,7 +17,7 @@ Do not connect the switch to any other external network, it should be a private 
 Connect the dongle to the camera and connect the USB-TO-SERIAL adapter to the dongle, using GND/TX/RX pin.
 
 ## startup
-On your linux PC install Putty and connect via serial port to the camera, using the default speed of 115200 N 1.
+On your linux PC install Putty (sudo apt install putty) and connect via serial port to the camera, using the default speed of 115200 N 1.
 Open a command shell (bash) on your PC, enter the qbastrial_hwtest and launch the streaming client:
 
 ```
