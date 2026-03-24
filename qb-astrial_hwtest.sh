@@ -36,7 +36,7 @@ STREAMING_DURATION="20s"
 ##############################################################################
 #       WARNING | do not modify code below this line | WARNING  
 ##############################################################################
-VERSION="2.1.0"
+VERSION="2.2.0"
 
 SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
