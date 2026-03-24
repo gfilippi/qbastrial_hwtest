@@ -105,28 +105,20 @@ else
    exit
 fi
 
+FILE="$SCRIPTPATH/detection_qbastrial_h8.tar"
+if [ -f $FILE ]; then
+   echo -e "${GREEN}[OK]File $FILE exists.${RESET}"
+else
+   echo -e "${RED}[ERROR]File $FILE does not exist.${RESET}"
+   echo -e "test procedure interrupted."
+   exit
+fi
 
 ##
 ## STEP 1: ETH CONFIGURATION
 ##
 echo
-echo -e "${WHITE}Running: file integrity check ...${RESET}"
-echo
-echo -e "${WHITE}QB-ASTRIAL manual config${RESET}"
-echo -e "${WHITE}open a serial terminal (PuTTY) and login as root to the device ${RESET}"
-echo -e "${WHITE}set the device ip_address with the following command: ${RESET}"
-echo
-echo -e "${YELLOW}ip addr add $IP_ADDR_CAMERA/24 dev eth0 ${RESET}"
-echo
-read -p "Press ENTER to continue..."
-
-if ping -c 3 -W 2 $IP_ADDR_CAMERA > /dev/null 2>&1; then
-    echo -e "${GREEN}[OK] QB-ASTRIAL is reachable${RESET}"
-else
-    echo -e "${RED}[ERROR] QB-ASTRIAL is NOT reachable${RESET}"
-    echo -e "test procedure interrupted."
-    exit    
-fi
+echo -e "${WHITE}Running: IP-ADDR manual configuration check ...${RESET}"
 
 echo
 echo -e "${WHITE}PC manual config:${RESET}"
@@ -146,6 +138,22 @@ else
     exit    
 fi
 
+echo
+echo -e "${WHITE}QB-ASTRIAL manual config${RESET}"
+echo -e "${WHITE}open a serial terminal (PuTTY) and login as root to the device ${RESET}"
+echo -e "${WHITE}set the device ip_address with the following command: ${RESET}"
+echo
+echo -e "${YELLOW}ip addr add $IP_ADDR_CAMERA/24 dev eth0 ${RESET}"
+echo
+read -p "Press ENTER to continue..."
+
+if ping -c 3 -W 2 $IP_ADDR_CAMERA > /dev/null 2>&1; then
+    echo -e "${GREEN}[OK] QB-ASTRIAL is reachable${RESET}"
+else
+    echo -e "${RED}[ERROR] QB-ASTRIAL is NOT reachable${RESET}"
+    echo -e "test procedure interrupted."
+    exit    
+fi
 
 echo
 echo -e "${WHITE}Copying files ...${RESET}"
@@ -173,8 +181,6 @@ if [ $ret -ne 0 ]; then
     fi
     shopt -u nocasematch
 
-    echo -e "test procedure interrupted."
-    exit    
 else
     echo -e "${GREEN}[OK] file copy successfull${RESET}"
 fi

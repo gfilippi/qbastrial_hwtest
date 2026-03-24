@@ -47,6 +47,7 @@ PIP_SMBUS2_FILE="smbus2-0.6.0-py2.py3-none-any.whl"
 APPS_PATH="/root/apps"
 APP_PATH="detection"
 APP_CMD="detection.sh"
+APP_CHECK="qb_astrial.txt"
 
 # pwm fan control
 PWM_CHIP=0
@@ -395,14 +396,33 @@ fi
 
 APP_FULLPATH=$APPS_PATH/$APP_PATH
 
+# h8 streaming app
+if [ $CAMERA_SENSOR_TYPE == "imx219" ]; then
+   if [ ! -f "$APP_FULLPATH/"$APP_CHECK ]; then
+      echo -e "${YELLOW}[WARNING]$APP_FULLPATH missing, uploading test app.${RESET}"
+      cd
+      tar -xvf detection_qbastrial_h8.tar >/dev/null 2>&1
+   fi
+   if [ ! -f "$APP_FULLPATH/"$APP_CHECK ]; then
+      echo -e "${RED}[ERROR]$APP_FULLPATH does exist.${RESET}"
+      echo -e "test procedure interrupted."
+      exit
+   fi
+else
+   # TODO: enable AR0234/AR0822 for ASTRIAL-H8 and imx678 for ASTRAL-H15
+   echo -e "${RED}[ERROR] only imx219 sensor camera supported streaming app.${RESET}"
+   echo -e "test procedure interrupted."
+   exit  
+fi
+
 if [ ! -d "$APP_FULLPATH" ]; then
-   echo -e "${RED}[ERROR]$APP_FULLPATH does exist.${RESET}"
+   echo -e "${RED}[ERROR]$APP_FULLPATH does NOT exist.${RESET}"
    echo -e "test procedure interrupted."
    exit
 fi
 
 if [ ! -f "$APP_FULLPATH/$APP_CMD" ]; then
-   echo -e "${RED}[ERROR]$APP_CMD does exist.${RESET}"
+   echo -e "${RED}[ERROR]$APP_CMD does NOT exist.${RESET}"
    echo -e "test procedure interrupted."
    exit
 fi
@@ -412,18 +432,31 @@ fi
 ## SENSOR CHECK : imx219
 ##
 if [ $CAMERA_SENSOR_TYPE == "imx219" ]; then
-   echo -e "${GREEN} imx219 camera is present"
-else
+   echo -e "${WHITE}Testing camera for imx219 sensor${RESET}"
+
    if [[ -c /dev/video3 ]]; then
-      echo -e "${YELLOW}[WARNING] missing camera device for imx219, enabling device"
+      echo -e "${GREEN}[OK] imx219 sensor is enabled.${RESET}"
+   else
+      echo -e "${YELLOW}[WARNING] missing camera device for imx219, enabling device${RESET}"
       cd /opt/imx8-isp/bin
       ./run.sh -lm -c dual_imx219_1080p60 &
+
+      sleep 5
    fi
-   if [ ! -f "/dev/video3" ];then
-      echo -e "${RED}[ERROR] could not enable imx219 camera"
+
+   if [[ -c /dev/video3 ]]; then
+      echo -e "${GREEN}[OK] imx219 sensor is enabled.${RESET}"
+   else
+      echo -e "${RED}[ERROR] could not enable imx219 camera${RESET}"
       echo -e "test procedure interrupted."
       exit
    fi
+
+else
+   # TODO: enable AR0234/AR0822 for ASTRIAL-H8 and imx678 for ASTRAL-H15   
+   echo -e "${RED}[ERROR] only imx219 sensor camera supported for streaming test.${RESET}"
+   echo -e "test procedure interrupted."
+   exit  
 fi
 
 
@@ -440,6 +473,15 @@ if [ $CAMERA_SENSOR_TYPE == "imx219" ]; then
 fi
 
 
+##
+## CLEANUP & EXIT
+##
+if [ $CAMERA_SENSOR_TYPE == "imx219" ]; then
+   pkill -f dual_imx219_1080p60
+   pkill -f isp_media_server
+fi
+
+
 echo -e
 echo -e "${WHITE}******************************${RESET}"
 echo -e "${WHITE}bye bye.${RESET}"
@@ -447,6 +489,6 @@ echo -e "${WHITE}******************************${RESET}"
 echo -e
 
 
-
+exit
 
 
