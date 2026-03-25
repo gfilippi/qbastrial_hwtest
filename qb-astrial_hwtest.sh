@@ -36,7 +36,7 @@ STREAMING_DURATION="20s"
 ##############################################################################
 #       WARNING | do not modify code below this line | WARNING  
 ##############################################################################
-VERSION="2.2.0"
+VERSION="2.3.0"
 
 SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
@@ -58,6 +58,8 @@ PWM_PATH="${PWM_BASE}/pwm${PWM_CHANNEL}"
 PWM_DUTY_CYCLE_MIN=0
 PWM_DUTY_CYCLE_MAX=100
 
+# HailoRT cli version: 4.23.0
+HAILORT_MIN_VER=4230
 
 ## ###########################################################################
 ## tools
@@ -389,6 +391,31 @@ else
    exit
 fi
 
+##
+## HAILORTCLI TEST
+##
+
+
+output=$(hailortcli -v)
+
+if [[ $output =~ ^HailoRT-CLI\ version\ ([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+    version_str="${BASH_REMATCH[1]}"
+    version_num=$(echo "$version_str" | tr -d '.')
+    echo "HAiloRT Version number: $version_num"
+else
+    echo -e "${RED}[ERROR] HailoRT unexpected version format${RESET}"
+    echo -e "test procedure interrupted."
+    exit 
+fi
+
+
+if (( version_num >= required )); then
+    echo -e "${GREEN}[OK] HAiloRT version is OK${RESET}"
+else
+    echo -e "${RED}[ERROR] HailoRT version is old. Please update yocto/hailort version.${RESET}"
+    echo -e "test procedure interrupted."
+    exit
+fi
 
 ##
 ## RUN STREAMING TEST
