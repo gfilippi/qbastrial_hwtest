@@ -34,7 +34,7 @@ CAMERA_SENSOR_TYPE="imx219"
 ##############################################################################
 #       WARNING | do not modify code below this line | WARNING  
 ##############################################################################
-VERSION="2.2.0"
+VERSION="2.3.0"
 
 SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
