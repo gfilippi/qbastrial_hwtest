@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # [LICENSE]
 #
 # MIT License
@@ -36,7 +38,7 @@ STREAMING_DURATION="20s"
 ##############################################################################
 #       WARNING | do not modify code below this line | WARNING  
 ##############################################################################
-VERSION="2.3.0"
+VERSION="2.4.0"
 
 SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
@@ -207,14 +209,19 @@ else
    fi
 fi
 
-
 ##
 ## SOFTWARE CONFIGURATION
 ##
 
 echo -e "${WHITE}Running: eth configuration check ...${RESET}"
 
-ip addr add $IP_ADDR_CAMERA/24 dev eth0
+# Check if IP already exists on eth0
+if ip -4 addr show dev eth0 | grep -qw "$IP_ADDR_CAMERA"; then
+    echo -e "${GREEN}[OK] IP $IP_ADDR_CAMERA already configured on eth0 ${RESET}"
+else
+    echo -e "${GRAY} Adding IP $IP_ADDR_CAMERA to eth0 ${RESET}"
+    ip addr add "$IP_ADDR_CAMERA/24" dev eth0
+fi
 
 if ping -c 3 -W 2 $IP_ADDR_CAMERA > /dev/null 2>&1; then
     echo -e "${GREEN}[OK] QB-ASTRIAL is reachable${RESET}"
@@ -395,27 +402,59 @@ fi
 ## HAILORTCLI TEST
 ##
 
+# Check Firmware Version
+required_cli_version="4.20.0"
+required_fw_version="4.20.0"
+
+
 
 output=$(hailortcli -v)
 
 if [[ $output =~ ^HailoRT-CLI\ version\ ([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
     version_str="${BASH_REMATCH[1]}"
-    version_num=$(echo "$version_str" | tr -d '.')
-    echo "HAiloRT Version number: $version_num"
+    echo "HailoRT Version: $version_str"
 else
     echo -e "${RED}[ERROR] HailoRT unexpected version format${RESET}"
-    echo -e "test procedure interrupted."
-    exit 
+    exit 1
 fi
 
-
-if (( version_num >= required )); then
-    echo -e "${GREEN}[OK] HAiloRT version is OK${RESET}"
+# Compare versions
+if [[ "$(printf '%s\n' "$required_cli_version" "$version_str" | sort -V | head -n1)" == "$required_cli_version" ]]; then
+    echo -e "${GREEN}[OK] HailoRT version is OK${RESET}"
 else
-    echo -e "${RED}[ERROR] HailoRT version is old. Please update yocto/hailort version.${RESET}"
-    echo -e "test procedure interrupted."
-    exit
+    echo -e "${RED}[ERROR] HailoRT version is too old. Please update yocto/hailort.${RESET}"
+    exit 1
 fi
+
+##
+## HAILO-8 test
+##
+
+# Function to compare versions (returns 0 if $1 > $2)
+version_gt() {
+    [ "$(printf '%s\n' "$1" "$2" | sort -V | tail -n1)" = "$1" ] && [[ "$1" != "$2" ]]
+}
+
+output=$(hailortcli fw-control identify | tr -d '\000' | iconv -f UTF-8 -t UTF-8 2>/dev/null)
+board_name=$(hailortcli fw-control identify | tr -d '\000' | awk -F': *' '/Board Name/ {print $2}')
+firmware_version=$(hailortcli fw-control identify | tr -d '\000' | awk -F': *' '/Firmware Version/ {print $2}' | awk '{print $1}')
+
+if [[ -z "$board_name" || "$board_name" != "Hailo-8" ]]; then
+    echo -e "${RED}[ERROR] Invalid or missing Board Name (found: '$board_name'). ${RESET}"
+    exit 1
+fi
+
+if [[ -z "$firmware_version" ]]; then
+    echo -e "${RED}[ERROR] Hailo Device Firmware Version not found ${RESET}"
+    exit 1
+fi
+
+if ! version_gt "$firmware_version" "$required_fw_version"; then
+    echo -e "${RED}[ERROR] Hailo Device Firmware Version ($firmware_version) is not greater than $required_fw_version ${RESET}"
+    exit 1
+fi
+
+echo -e "${GREEN}[OK] Hailo Device Firmware version is valid (${firmware_version}) ${RESET}"
 
 ##
 ## RUN STREAMING TEST
